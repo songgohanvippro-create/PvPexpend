@@ -983,13 +983,12 @@ function frame(){
 requestAnimationFrame(frame);
 })();
 
-/* DEMO: tự tạo tài khoản thử đã đeo Khung Rồng Xương */
-try{const NM="Khách thử";let a=S.accounts.find(x=>x.u===NM);
-if(!a){a={id:uid(),u:NM,code:null,t:Date.now()};S.accounts.push(a);
- const c=document.createElement("canvas");c.width=c.height=160;const x=c.getContext("2d"),g=x.createLinearGradient(0,0,160,160);g.addColorStop(0,"#5b8cff");g.addColorStop(1,"#34f5c5");x.fillStyle=g;x.fillRect(0,0,160,160);x.fillStyle="#fff";x.font="bold 90px sans-serif";x.fillText("K",42,115);
- (S.pav??={})[a.id]=c.toDataURL("image/jpeg",.9);
- S.players.unshift({id:uid(),name:NM,stars:5,k:99,a:9,mvp:9,t:0,acc:a.id,st:"ok"});
- (S.coins??={})[a.id]=10000;(S.inv??={})[a.id]=["f6"];(S.eq??={})[a.id]={frame:"f6"}}
-(S.rxT??={})[a.id]=Date.now();save();user=a.u;try{sessionStorage.setItem("cu",a.u)}catch{}setMe(a.id);pfOpen=true}catch(e){}
+/* Không còn tài khoản thử tự vào sẵn: mới vào là trang Đăng nhập / Đăng ký. Dọn tài khoản "Khách thử" cũ nếu còn trong dữ liệu */
+try{const NM="Khách thử",g=S.accounts.find(x=>x.u===NM);
+if(g){const id=g.id,pids=S.players.filter(p=>p.acc===id||p.name===NM).map(p=>p.id);
+ S.accounts=S.accounts.filter(x=>x.id!==id);S.players=S.players.filter(p=>!pids.includes(p.id));
+ for(const k of["pav","coins","inv","eq","rxT"])if(S[k])delete S[k][id];
+ for(const q of(S.squads||[]))for(const k in q)if(Array.isArray(q[k]))q[k]=q[k].filter(v=>!pids.includes(v)&&!(v&&v.id&&pids.includes(v.id)));
+ if(me===id)setMe(null);save()}
+if(user===NM){user=null;try{sessionStorage.removeItem("cu")}catch{}}}catch(e){}
 route();
-setTimeout(()=>{try{[...document.querySelectorAll('button')].find(b=>/cá nhân/.test(b.textContent)&&/Xếp hạng/.test(b.textContent)).click()}catch{}},300);
