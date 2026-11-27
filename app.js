@@ -554,7 +554,7 @@ const PAY_API=""; /* địa chỉ server thanh toán của bạn (có đường 
 let shPack=null,shBank=null,shMsg="";
 /* ===== VÍ COIN THẬT (Supabase): mỗi tài khoản trên trang có một ví tự tạo, không cần đăng nhập thêm ===== */
 const SB_URL="https://snaqauwsvhjwqqgqmkdt.supabase.co",SB_KEY="sb_publishable_xumJPdWyAY35KPOkA-XwPw_fUvS-6cB";
-let wl={sess:null,prof:null,state:"idle",msg:"",busy:false,acc:null};
+let wl={sess:null,ok:false,state:"idle",msg:"",okMsg:"",busy:false,acc:null,sel:null};
 const wacc=()=>(S.accounts.find(x=>x.u===user)||{}).id||null;
 const wsave=()=>{try{wl.sess?localStorage.setItem("wl_sess_"+wl.acc,JSON.stringify(wl.sess)):localStorage.removeItem("wl_sess_"+wl.acc)}catch{}};
 const wvi=m=>/Anonymous sign-ins are disabled/i.test(m)?"Ví tự động chưa được bật, hãy báo ban tổ chức":/Database error/i.test(m)?"Không tạo được ví, hãy thử lại":m;
@@ -568,14 +568,20 @@ async function wtoken(){
   const s=wl.sess;if(!s)return null;
   if(Date.now()>s.expires_at-60000){
     try{wset(await sb("/auth/v1/token?grant_type=refresh_token",{method:"POST",body:{refresh_token:s.refresh_token}}))}
-    catch{wl.sess=null;wl.prof=null;wsave();return null}}
+    catch{wl.sess=null;wsave();return null}}
   return wl.sess.access_token}
 async function wload(){
-  const t=await wtoken();if(!t){wl.prof=null;return}
-  try{wl.prof=(await sb("/rest/v1/profiles?select=username,coin",{token:t}))[0]||null}catch(e){wl.msg=wvi(e.message)}}
+  const t=await wtoken();if(!t){wl.ok=false;return}
+  try{wl.ok=true;wapply(await sb("/rest/v1/orders?select=order_code,coin&status=eq.paid",{token:t}))}
+  catch(e){wl.ok=false;wl.msg=wvi(e.message)}}
+function wapply(rows){
+  const id=wacc();if(!id)return;
+  S.applied=S.applied||{};const done=S.applied[id]=S.applied[id]||[];let add=0;
+  for(const o of rows)if(!done.includes(o.order_code)){done.push(o.order_code);add+=o.coin}
+  if(add){S.coins=S.coins||{};S.coins[id]=(S.coins[id]||0)+add;wl.okMsg="Đã cộng "+fmt(add)+" coin vào tài khoản";save();draw()}}
 async function winit(){
   const id=wacc();if(!id)return;
-  wl={sess:null,prof:null,state:"loading",msg:"",busy:false,acc:id};
+  wl={sess:null,ok:false,state:"loading",msg:"",okMsg:"",busy:false,acc:id,sel:null};
   try{wl.sess=JSON.parse(localStorage.getItem("wl_sess_"+id)||"null")}catch{}
   try{
     if(!wl.sess){
@@ -583,7 +589,7 @@ async function winit(){
       if(!d.access_token)throw new Error("Chưa tạo được ví");
       wset(d)}
     await wload();
-    wl.state=wl.prof?"ready":"error";if(!wl.prof&&!wl.msg)wl.msg="Chưa tải được ví"
+    wl.state=wl.ok?"ready":"error";if(!wl.ok&&!wl.msg)wl.msg="Chưa tải được ví"
   }catch(e){wl.state="error";wl.msg=wvi(e.message)}
   if(wl.acc===id)drawShop()}
 async function wpay(vnd){
@@ -600,17 +606,18 @@ function walletHTML(){
   if(!id)return '<p class="hint">Hãy đăng nhập để nạp coin.</p>';
   if(wl.acc!==id||wl.state==="idle"){winit();return load}
   if(wl.state==="loading")return load;
-  const m=wl.msg?`<p class="hint" style="color:#ff8fa3">${esc(wl.msg)}</p>`:"";
-  if(wl.state==="error"||!wl.prof)return `<p class="hint">Chưa kết nối được ví.</p>${m}<button type="button" class="gv nap" data-wa="rt">Thử lại</button>`;
-  return `<div class="gm"><div class="wb"><b>${esc(user)}</b><small>Số dư thật: 🪙 ${fmt(wl.prof.coin)} coin</small></div></div><p class="hint"><b>Chọn gói nạp</b></p><div class="shg">${PACKS.map(p=>`<button type="button" class="gv" data-wp="${p.vnd}"${wl.busy?" disabled":""}>${fmt(p.vnd)} VND<br>= ${fmt(p.coin)} coin</button>`).join("")}</div>${m}<p class="hint">Bấm gói để sang trang thanh toán. Trả xong coin tự cộng, nếu chưa thấy bấm <button type="button" class="gv" data-wa="rf">Làm mới</button></p>`}
+  const m=wl.msg?`<p class="hint" style="color:#ff8fa3">${esc(wl.msg)}</p>`:"",g=wl.okMsg?`<p class="hint" style="color:#7dffb0">${esc(wl.okMsg)}</p>`:"";
+  if(wl.state==="error")return `<p class="hint">Chưa kết nối được ví.</p>${m}<button type="button" class="gv nap" data-wa="rt">Thử lại</button>`;
+  return `<p class="hint"><b>Chọn gói nạp</b></p><div class="shg">${PACKS.map(p=>`<button type="button" class="gv${wl.sel===p.vnd?" sel":""}" data-wp="${p.vnd}"${wl.busy?" disabled":""}>${fmt(p.vnd)} VND<br>= ${fmt(p.coin)} coin</button>`).join("")}</div>${g}${m}<button type="button" class="gv nap" data-wa="pay"${wl.sel&&!wl.busy?"":" disabled"}>${wl.busy?"Đang mở trang thanh toán...":"Nạp"}</button><p class="hint">Trả tiền xong, coin tự cộng vào số coin của bạn. Nếu chưa thấy, bấm <button type="button" class="gv" data-wa="rf">Làm mới</button></p>`}
 $("#shW").addEventListener("click",e=>{
   const a=e.target.closest("[data-wa]"),p=e.target.closest("[data-wp]");
-  if(p){wpay(+p.dataset.wp);return}
+  if(p){wl.sel=+p.dataset.wp;wl.msg="";wl.okMsg="";drawShop();return}
   if(!a)return;const k=a.dataset.wa;
-  if(k==="rt"){wl.state="idle";wl.acc=null;wl.msg="";drawShop()}
-  else if(k==="rf"){wload().then(drawShop)}
+  if(k==="pay"){if(wl.sel)wpay(wl.sel)}
+  else if(k==="rt"){wl.state="idle";wl.acc=null;wl.msg="";drawShop()}
+  else if(k==="rf"){wl.msg="";wload().then(()=>drawShop())}
 });
-if(/orderCode|status=/.test(location.search)){shOpen=true;shTab="coin";let n=0;const iv=setInterval(()=>{if(wl.state==="ready")wload().then(drawShop);if(++n>10)clearInterval(iv)},3000)}
+if(/orderCode|status=/.test(location.search)){shOpen=true;shTab="coin";let n=0;const iv=setInterval(()=>{if(wl.state==="ready")wload().then(()=>drawShop());if(++n>10)clearInterval(iv)},3000)}
 
 let shOpen=false,shTab="coin";
 function drawShop(){
@@ -992,3 +999,6 @@ if(g){const id=g.id,pids=S.players.filter(p=>p.acc===id||p.name===NM).map(p=>p.i
  if(me===id)setMe(null);save()}
 if(user===NM){user=null;try{sessionStorage.removeItem("cu")}catch{}}}catch(e){}
 route();
+/* Khóa phóng to / thu nhỏ để tránh rối mắt và khó bấm */
+["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener("touchmove",e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});

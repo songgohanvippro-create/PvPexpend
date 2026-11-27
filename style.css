@@ -397,7 +397,7 @@ h2.big::before{background:linear-gradient(#7ea8ff,#c084fc);box-shadow:0 0 12px #
 .mfr.rxg i.em{z-index:5;overflow:hidden;opacity:var(--rxa,1);-webkit-mask:radial-gradient(circle closest-side at 50% 50%,transparent 62%,#000 70%,#000 88%,transparent 100%);mask:radial-gradient(circle closest-side at 50% 50%,transparent 62%,#000 70%,#000 88%,transparent 100%)}
 .mfr.rxg i.em::before{content:"";position:absolute;left:0;top:0;width:100%;height:200%;background:radial-gradient(circle,#ff7a2a 0 1.2px,transparent 2px) 0 0/20% 10%,radial-gradient(circle,#ffd28a 0 .9px,transparent 1.6px) 6px 9px/10% 12.5%,radial-gradient(circle,#ff4a1c 0 1px,transparent 1.8px) 3px 4px/20% 6.25%;animation:mfe 7s linear infinite}
 .shg .gv{border-radius:14px;padding:12px 8px;line-height:1.45;opacity:.7}
-.shg .gv.sel{opacity:1;outline:2px solid #fff;outline-offset:1px}
+.shg .gv.sel{opacity:1;transform:scale(1.02);filter:brightness(1.18);outline:3px solid #fff;outline-offset:1px;box-shadow:0 0 20px rgba(255,226,122,.95)}
 .shg.bk .gv{padding:10px 6px}
 .gv.nap{width:100%;padding:12px;font-size:16px}
 .wb b,.wb small{display:block}
@@ -406,3 +406,6 @@ h2.big::before{background:linear-gradient(#7ea8ff,#c084fc);box-shadow:0 0 12px #
 /* ẩn nút chuyển Trang client / Trang admin */
 .sw a{display:none}
 .admx{display:block;margin:0 0 12px auto;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;font:inherit;cursor:pointer}
+
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
+.gv.nap:disabled{opacity:.45}
